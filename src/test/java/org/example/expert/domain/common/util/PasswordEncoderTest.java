@@ -1,4 +1,4 @@
-package org.example.expert.config;
+package org.example.expert.domain.common.util;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
