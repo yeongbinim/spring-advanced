@@ -9,7 +9,6 @@ import static org.mockito.BDDMockito.given;
 
 import java.util.Optional;
 import org.example.expert.domain.comment.dto.request.CommentSaveRequest;
-import org.example.expert.domain.comment.dto.response.CommentResponse;
 import org.example.expert.domain.comment.entity.Comment;
 import org.example.expert.domain.comment.repository.CommentRepository;
 import org.example.expert.domain.common.dto.AuthUser;
@@ -66,7 +65,7 @@ class CommentServiceTest {
 		given(commentRepository.save(any())).willReturn(comment);
 
 		// when
-		CommentResponse result = commentService.saveComment(authUser, todoId, request);
+		Comment result = commentService.saveComment(authUser, todoId, request);
 
 		// then
 		assertNotNull(result);
