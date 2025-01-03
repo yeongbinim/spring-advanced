@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.example.expert.domain.common.exception.InvalidRequestException;
 import org.example.expert.domain.common.util.PasswordEncoder;
 import org.example.expert.domain.user.dto.request.UserPasswordChangeRequest;
-import org.example.expert.domain.user.dto.response.UserResponse;
 import org.example.expert.domain.user.entity.User;
 import org.example.expert.domain.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -18,22 +17,14 @@ public class UserService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 
-	public UserResponse getUser(long userId) {
-		User user = userRepository.findById(userId)
+	public User getUser(long userId) {
+		return userRepository.findById(userId)
 			.orElseThrow(() -> new InvalidRequestException("User not found"));
-		return new UserResponse(user.getId(), user.getEmail());
 	}
 
 	@Transactional
 	public void changePassword(long userId, UserPasswordChangeRequest userPasswordChangeRequest) {
-		if (userPasswordChangeRequest.getNewPassword().length() < 8 ||
-			!userPasswordChangeRequest.getNewPassword().matches(".*\\d.*") ||
-			!userPasswordChangeRequest.getNewPassword().matches(".*[A-Z].*")) {
-			throw new InvalidRequestException("새 비밀번호는 8자 이상이어야 하고, 숫자와 대문자를 포함해야 합니다.");
-		}
-
-		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new InvalidRequestException("User not found"));
+		User user = getUser(userId);
 
 		if (passwordEncoder.matches(userPasswordChangeRequest.getNewPassword(),
 			user.getPassword())) {
@@ -42,9 +33,9 @@ public class UserService {
 
 		if (!passwordEncoder.matches(userPasswordChangeRequest.getOldPassword(),
 			user.getPassword())) {
-			throw new InvalidRequestException("잘못된 비밀번호입니다.");
+			throw new InvalidRequestException("기존 비밀번호가 일치하지 않습니다.");
 		}
-
+		
 		user.changePassword(passwordEncoder.encode(userPasswordChangeRequest.getNewPassword()));
 	}
 }
