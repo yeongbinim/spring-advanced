@@ -11,7 +11,6 @@ import java.util.Optional;
 import org.example.expert.domain.common.dto.AuthUser;
 import org.example.expert.domain.common.exception.InvalidRequestException;
 import org.example.expert.domain.manager.dto.request.ManagerSaveRequest;
-import org.example.expert.domain.manager.dto.response.ManagerResponse;
 import org.example.expert.domain.manager.entity.Manager;
 import org.example.expert.domain.manager.repository.ManagerRepository;
 import org.example.expert.domain.todo.entity.Todo;
@@ -87,17 +86,15 @@ class ManagerServiceTest {
 		given(managerRepository.findAllByTodoId(todoId)).willReturn(managerList);
 
 		// when
-		List<ManagerResponse> managerResponses = managerService.getManagers(todoId);
+		List<Manager> manager = managerService.getManagers(todoId);
 
 		// then
-		assertEquals(1, managerResponses.size());
-		assertEquals(mockManager.getId(), managerResponses.get(0).getId());
-		assertEquals(mockManager.getUser().getEmail(),
-			managerResponses.get(0).getUser().getEmail());
+		assertEquals(1, manager.size());
+		assertEquals(mockManager.getId(), manager.get(0).getId());
+		assertEquals(mockManager.getUser().getEmail(), manager.get(0).getUser().getEmail());
 	}
 
 	@Test
-		// 테스트코드 샘플
 	void todo가_정상적으로_등록된다() {
 		// given
 		AuthUser authUser = new AuthUser(1L, "a@a.com", UserRole.USER);
@@ -119,12 +116,11 @@ class ManagerServiceTest {
 			invocation -> invocation.getArgument(0));
 
 		// when
-		ManagerResponse response = managerService.saveManager(authUser, todoId,
-			managerSaveRequest);
+		Manager manger = managerService.saveManager(authUser, todoId, managerSaveRequest);
 
 		// then
-		assertNotNull(response);
-		assertEquals(managerUser.getId(), response.getUser().getId());
-		assertEquals(managerUser.getEmail(), response.getUser().getEmail());
+		assertNotNull(manger);
+		assertEquals(managerUser.getId(), manger.getUser().getId());
+		assertEquals(managerUser.getEmail(), manger.getUser().getEmail());
 	}
 }
