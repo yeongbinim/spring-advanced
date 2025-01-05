@@ -1,9 +1,11 @@
 package org.example.expert.domain.todo.service;
 
+import static org.example.expert.domain.common.exception.ExceptionType.TODO_NOT_FOUND;
+
 import lombok.RequiredArgsConstructor;
 import org.example.expert.domain.common.client.WeatherClient;
 import org.example.expert.domain.common.dto.AuthUser;
-import org.example.expert.domain.common.exception.InvalidRequestException;
+import org.example.expert.domain.common.exception.CustomException;
 import org.example.expert.domain.todo.dto.request.TodoSaveRequest;
 import org.example.expert.domain.todo.entity.Todo;
 import org.example.expert.domain.todo.repository.TodoRepository;
@@ -44,6 +46,6 @@ public class TodoService {
 
 	public Todo getTodo(long todoId) {
 		return todoRepository.findById(todoId)
-			.orElseThrow(() -> new InvalidRequestException("Todo not found"));
+			.orElseThrow(() -> new CustomException(TODO_NOT_FOUND));
 	}
 }

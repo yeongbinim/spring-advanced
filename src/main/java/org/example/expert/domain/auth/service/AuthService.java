@@ -1,10 +1,13 @@
 package org.example.expert.domain.auth.service;
 
+import static org.example.expert.domain.common.exception.ExceptionType.AUTH_FAILED;
+import static org.example.expert.domain.common.exception.ExceptionType.EMAIL_DUPLICATE;
+import static org.example.expert.domain.common.exception.ExceptionType.USER_NOT_FOUND;
+
 import lombok.RequiredArgsConstructor;
 import org.example.expert.domain.auth.dto.request.SigninRequest;
 import org.example.expert.domain.auth.dto.request.SignupRequest;
-import org.example.expert.domain.auth.exception.AuthException;
-import org.example.expert.domain.common.exception.InvalidRequestException;
+import org.example.expert.domain.common.exception.CustomException;
 import org.example.expert.domain.common.util.JwtUtil;
 import org.example.expert.domain.common.util.PasswordEncoder;
 import org.example.expert.domain.user.entity.User;
@@ -25,7 +28,7 @@ public class AuthService {
 	@Transactional
 	public String signup(SignupRequest signupRequest) {
 		if (userRepository.existsByEmail(signupRequest.getEmail())) {
-			throw new InvalidRequestException("이미 존재하는 이메일입니다.");
+			throw new CustomException(EMAIL_DUPLICATE);
 		}
 
 		UserRole userRole = UserRole.of(signupRequest.getUserRole());
@@ -40,11 +43,11 @@ public class AuthService {
 	}
 
 	public String signin(SigninRequest signinRequest) {
-		User user = userRepository.findByEmail(signinRequest.getEmail()).orElseThrow(
-			() -> new InvalidRequestException("가입되지 않은 유저입니다."));
+		User user = userRepository.findByEmail(signinRequest.getEmail())
+			.orElseThrow(() -> new CustomException(USER_NOT_FOUND));
 
 		if (!passwordEncoder.matches(signinRequest.getPassword(), user.getPassword())) {
-			throw new AuthException("잘못된 비밀번호입니다.");
+			throw new CustomException(AUTH_FAILED);
 		}
 
 		return jwtUtil.createToken(user.getId(), user.getEmail(), user.getUserRole());

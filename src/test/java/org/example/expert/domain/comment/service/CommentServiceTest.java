@@ -1,10 +1,9 @@
 package org.example.expert.domain.comment.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.example.expert.domain.common.exception.ExceptionType.TODO_NOT_FOUND;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 
 import java.util.Optional;
@@ -12,11 +11,12 @@ import org.example.expert.domain.comment.dto.request.CommentSaveRequest;
 import org.example.expert.domain.comment.entity.Comment;
 import org.example.expert.domain.comment.repository.CommentRepository;
 import org.example.expert.domain.common.dto.AuthUser;
-import org.example.expert.domain.common.exception.ServerException;
+import org.example.expert.domain.common.exception.CustomException;
 import org.example.expert.domain.todo.entity.Todo;
 import org.example.expert.domain.todo.repository.TodoRepository;
 import org.example.expert.domain.user.entity.User;
 import org.example.expert.domain.user.enums.UserRole;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,40 +34,43 @@ class CommentServiceTest {
 	private CommentService commentService;
 
 	@Test
-	public void comment_등록_중_할일을_찾지_못해_에러가_발생한다() {
+	@DisplayName("saveComment: 예외 - 댓글이 생성될 todo가 없을 때")
+	void saveComment_Exception1() {
 		// given
-		long todoId = 1;
+		long todoId = 1L;
 		CommentSaveRequest request = new CommentSaveRequest("contents");
 		AuthUser authUser = new AuthUser(1L, "email", UserRole.USER);
 
-		given(todoRepository.findById(anyLong())).willReturn(Optional.empty());
+		given(todoRepository.findById(todoId)).willReturn(Optional.empty());
 
 		// when
-		ServerException exception = assertThrows(ServerException.class, () -> {
-			commentService.saveComment(authUser, todoId, request);
-		});
+		CustomException exception = catchThrowableOfType(
+			() -> commentService.saveComment(authUser, todoId, request),
+			CustomException.class
+		);
 
 		// then
-		assertEquals("Todo not found", exception.getMessage());
+		assertThat(exception.getCode()).isEqualTo(TODO_NOT_FOUND.getCode());
 	}
 
 	@Test
-	public void comment를_정상적으로_등록한다() {
+	@DisplayName("saveComment: 정상 등록")
+	public void saveComment_Success() {
 		// given
-		long todoId = 1;
+		long todoId = 1L;
 		CommentSaveRequest request = new CommentSaveRequest("contents");
 		AuthUser authUser = new AuthUser(1L, "email", UserRole.USER);
 		User user = User.fromAuthUser(authUser);
 		Todo todo = new Todo("title", "title", "contents", user);
 		Comment comment = new Comment(request.getContents(), user, todo);
 
-		given(todoRepository.findById(anyLong())).willReturn(Optional.of(todo));
+		given(todoRepository.findById(todoId)).willReturn(Optional.of(todo));
 		given(commentRepository.save(any())).willReturn(comment);
 
 		// when
 		Comment result = commentService.saveComment(authUser, todoId, request);
 
 		// then
-		assertNotNull(result);
+		assertThat(result).isNotNull();
 	}
 }

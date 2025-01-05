@@ -1,12 +1,14 @@
 package org.example.expert.domain.comment.service;
 
+import static org.example.expert.domain.common.exception.ExceptionType.TODO_NOT_FOUND;
+
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.example.expert.domain.comment.dto.request.CommentSaveRequest;
 import org.example.expert.domain.comment.entity.Comment;
 import org.example.expert.domain.comment.repository.CommentRepository;
 import org.example.expert.domain.common.dto.AuthUser;
-import org.example.expert.domain.common.exception.InvalidRequestException;
+import org.example.expert.domain.common.exception.CustomException;
 import org.example.expert.domain.todo.entity.Todo;
 import org.example.expert.domain.todo.repository.TodoRepository;
 import org.example.expert.domain.user.entity.User;
@@ -29,8 +31,8 @@ public class CommentService {
 	) {
 		User user = User.fromAuthUser(authUser);
 
-		Todo todo = todoRepository.findById(todoId).orElseThrow(() ->
-			new InvalidRequestException("Todo not found"));
+		Todo todo = todoRepository.findById(todoId)
+			.orElseThrow(() -> new CustomException(TODO_NOT_FOUND));
 
 		Comment comment = new Comment(commentSaveRequest.getContents(), user, todo);
 
