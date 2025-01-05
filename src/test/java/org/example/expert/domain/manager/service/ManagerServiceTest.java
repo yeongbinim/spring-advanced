@@ -1,18 +1,16 @@
 package org.example.expert.domain.manager.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowableOfType;
+import static org.example.expert.domain.common.exception.ExceptionType.TODO_NOT_FOUND;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 import java.util.List;
 import java.util.Optional;
 import org.example.expert.domain.common.dto.AuthUser;
-import org.example.expert.domain.common.exception.InvalidRequestException;
+import org.example.expert.domain.common.exception.CustomException;
 import org.example.expert.domain.manager.dto.request.ManagerSaveRequest;
-import org.example.expert.domain.manager.dto.response.ManagerResponse;
-import org.example.expert.domain.manager.dto.response.ManagerSaveResponse;
 import org.example.expert.domain.manager.entity.Manager;
 import org.example.expert.domain.manager.repository.ManagerRepository;
 import org.example.expert.domain.todo.entity.Todo;
@@ -20,6 +18,7 @@ import org.example.expert.domain.todo.repository.TodoRepository;
 import org.example.expert.domain.user.entity.User;
 import org.example.expert.domain.user.enums.UserRole;
 import org.example.expert.domain.user.repository.UserRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,96 +29,83 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class ManagerServiceTest {
 
-    @Mock
-    private ManagerRepository managerRepository;
-    @Mock
-    private UserRepository userRepository;
-    @Mock
-    private TodoRepository todoRepository;
-    @InjectMocks
-    private ManagerService managerService;
+	@Mock
+	private ManagerRepository managerRepository;
+	@Mock
+	private UserRepository userRepository;
+	@Mock
+	private TodoRepository todoRepository;
+	@InjectMocks
+	private ManagerService managerService;
 
-    @Test
-    public void manager_목록_조회_시_Todo가_없다면_NPE_에러를_던진다() {
-        // given
-        long todoId = 1L;
-        given(todoRepository.findById(todoId)).willReturn(Optional.empty());
+	@Test
+	@DisplayName("getManagers: 예외 - 관리를 생성할 todo가 없을 때")
+	public void getMangers_Exception1() {
+		// given
+		long todoId = 1L;
+		given(todoRepository.existsById(todoId)).willReturn(false);
 
-        // when & then
-        InvalidRequestException exception = assertThrows(InvalidRequestException.class, () -> managerService.getManagers(todoId));
-        assertEquals("Manager not found", exception.getMessage());
-    }
+		// when
+		CustomException exception = catchThrowableOfType(
+			() -> managerService.getManagers(todoId),
+			CustomException.class
+		);
 
-    @Test
-    void todo의_user가_null인_경우_예외가_발생한다() {
-        // given
-        AuthUser authUser = new AuthUser(1L, "a@a.com", UserRole.USER);
-        long todoId = 1L;
-        long managerUserId = 2L;
+		// then
+		assertThat(exception.getCode()).isEqualTo(TODO_NOT_FOUND.getCode());
+	}
 
-        Todo todo = new Todo();
-        ReflectionTestUtils.setField(todo, "user", null);
+	@Test
+	@DisplayName("getManagers: 정상 조회")
+	public void getMangers_Success() {
+		// given
+		long todoId = 1L;
+		User user = new User("user1@example.com", "password", UserRole.USER);
+		Todo todo = new Todo("Title", "Contents", "Sunny", user);
+		ReflectionTestUtils.setField(todo, "id", todoId);
 
-        ManagerSaveRequest managerSaveRequest = new ManagerSaveRequest(managerUserId);
+		Manager mockManager = new Manager(todo.getUser(), todo);
+		List<Manager> mockManagerList = List.of(mockManager);
 
-        given(todoRepository.findById(todoId)).willReturn(Optional.of(todo));
+		given(todoRepository.existsById(todoId)).willReturn(true);
+		given(managerRepository.findAllByTodoId(todoId)).willReturn(mockManagerList);
 
-        // when & then
-        InvalidRequestException exception = assertThrows(InvalidRequestException.class, () ->
-            managerService.saveManager(authUser, todoId, managerSaveRequest)
-        );
+		// when
+		List<Manager> result = managerService.getManagers(todoId);
 
-        assertEquals("담당자를 등록하려고 하는 유저가 일정을 만든 유저가 유효하지 않습니다.", exception.getMessage());
-    }
+		// then
+		assertThat(result).hasSize(1);
+		assertThat(result.get(0).getUser().getEmail()).isEqualTo(user.getEmail());
+		assertThat(result.get(0).getId()).isEqualTo(mockManager.getId());
+	}
 
-    @Test // 테스트코드 샘플
-    public void manager_목록_조회에_성공한다() {
-        // given
-        long todoId = 1L;
-        User user = new User("user1@example.com", "password", UserRole.USER);
-        Todo todo = new Todo("Title", "Contents", "Sunny", user);
-        ReflectionTestUtils.setField(todo, "id", todoId);
+	@Test
+	@DisplayName("saveManager: 정상 등록")
+	void saveManager_Success() {
+		// given
+		AuthUser authUser = new AuthUser(1L, "a@a.com", UserRole.USER);
+		User user = User.fromAuthUser(authUser);  // 일정을 만든 유저
 
-        Manager mockManager = new Manager(todo.getUser(), todo);
-        List<Manager> managerList = List.of(mockManager);
+		long todoId = 1L;
+		Todo todo = new Todo("Test Title", "Test Contents", "Sunny", user);
 
-        given(todoRepository.findById(todoId)).willReturn(Optional.of(todo));
-        given(managerRepository.findAllByTodoId(todoId)).willReturn(managerList);
+		long managerUserId = 2L;
+		User managerUser = new User("b@b.com", "password", UserRole.USER);  // 매니저로 등록할 유저
+		ReflectionTestUtils.setField(managerUser, "id", managerUserId);
 
-        // when
-        List<ManagerResponse> managerResponses = managerService.getManagers(todoId);
+		// request dto 생성
+		ManagerSaveRequest managerSaveRequest = new ManagerSaveRequest(managerUserId);
 
-        // then
-        assertEquals(1, managerResponses.size());
-        assertEquals(mockManager.getId(), managerResponses.get(0).getId());
-        assertEquals(mockManager.getUser().getEmail(), managerResponses.get(0).getUser().getEmail());
-    }
+		given(todoRepository.findById(todoId)).willReturn(Optional.of(todo));
+		given(userRepository.findById(managerUserId)).willReturn(Optional.of(managerUser));
+		given(managerRepository.save(any(Manager.class))).willAnswer(
+			invocation -> invocation.getArgument(0));
 
-    @Test // 테스트코드 샘플
-    void todo가_정상적으로_등록된다() {
-        // given
-        AuthUser authUser = new AuthUser(1L, "a@a.com", UserRole.USER);
-        User user = User.fromAuthUser(authUser);  // 일정을 만든 유저
+		// when
+		Manager result = managerService.saveManager(authUser, todoId, managerSaveRequest);
 
-        long todoId = 1L;
-        Todo todo = new Todo("Test Title", "Test Contents", "Sunny", user);
-
-        long managerUserId = 2L;
-        User managerUser = new User("b@b.com", "password", UserRole.USER);  // 매니저로 등록할 유저
-        ReflectionTestUtils.setField(managerUser, "id", managerUserId);
-
-        ManagerSaveRequest managerSaveRequest = new ManagerSaveRequest(managerUserId); // request dto 생성
-
-        given(todoRepository.findById(todoId)).willReturn(Optional.of(todo));
-        given(userRepository.findById(managerUserId)).willReturn(Optional.of(managerUser));
-        given(managerRepository.save(any(Manager.class))).willAnswer(invocation -> invocation.getArgument(0));
-
-        // when
-        ManagerSaveResponse response = managerService.saveManager(authUser, todoId, managerSaveRequest);
-
-        // then
-        assertNotNull(response);
-        assertEquals(managerUser.getId(), response.getUser().getId());
-        assertEquals(managerUser.getEmail(), response.getUser().getEmail());
-    }
+		// then
+		assertThat(result).isNotNull();
+		assertThat(result.getUser().getId()).isEqualTo(managerUser.getId());
+	}
 }
